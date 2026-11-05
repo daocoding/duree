@@ -1,0 +1,5 @@
+# Documented here so an overlay can pin them. Phase 1 serves lexical search only.
+ranker: lexical
+embed_model: "@cf/google/embeddinggemma-300m"
+rerank: false
+rrf_k: 60

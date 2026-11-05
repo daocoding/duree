@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/daocoding/duree/config/schema.json",
+  "title": "Duree config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "workspace", "auth", "retrieval", "deck", "retention", "export"],
+  "properties": {
+    "version": { "const": 1 },
+    "core": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default", "issue_prefix", "statuses"],
+      "properties": {
+        "default": { "type": "string" },
+        "issue_prefix": { "type": "string", "pattern": "^[A-Z][A-Z0-9]{1,7}$" },
+        "statuses": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bootstrap_admin", "token_ttl_days"],
+      "properties": {
+        "bootstrap_admin": { "type": "boolean" },
+        "token_ttl_days": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "retrieval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ranker", "embed_model", "rerank", "rrf_k", "limits"],
+      "properties": {
+        "ranker": { "enum": ["lexical", "hybrid"] },
+        "embed_model": { "type": "string" },
+        "rerank": { "type": "boolean" },
+        "rrf_k": { "type": "integer", "minimum": 1 },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["issue", "memory", "deck", "event"],
+          "properties": {
+            "issue": { "type": "integer", "minimum": 1 },
+            "memory": { "type": "integer", "minimum": 1 },
+            "deck": { "type": "integer", "minimum": 1 },
+            "event": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    },
+    "deck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["module"],
+      "properties": { "module": { "type": "string" } }
+    },
+    "retention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["change_log_days"],
+      "properties": { "change_log_days": { "type": "integer", "minimum": 0 } }
+    },
+    "export": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["r2_nightly"],
+      "properties": { "r2_nightly": { "type": "boolean" } }
+    },
+    "extensions": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "agents": { "type": "string" },
+    "workspaces": { "type": "string" },
+    "ranking": { "type": "string" }
+  }
+}

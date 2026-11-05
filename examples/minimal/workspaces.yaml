@@ -1,0 +1,4 @@
+workspaces:
+  - name: main
+    issue_prefix: EX
+    statuses: [todo, in_progress, in_review, done, canceled]

@@ -1,0 +1,5 @@
+# Names and scopes only. Tokens are minted at runtime and stored as hashes.
+agents:
+  - name: example-agent
+    kind: agent
+    scopes: [read, write:issues, write:memory, write:activity, write:deck]

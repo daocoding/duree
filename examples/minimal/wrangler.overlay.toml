@@ -1,0 +1,3 @@
+# Fake Cloudflare bindings. Not an account, not a route, not a secret.
+name = "duree-example"
+account_id = "example-not-a-real-account"

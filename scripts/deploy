@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Validate config, render wrangler JSON, and (only with --apply) deploy.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+exec npx tsx scripts/deploy.ts "$@"

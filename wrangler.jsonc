@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "duree",
+  "main": "core/index.ts",
+  "compatibility_date": "2026-11-04",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  // Local and test only. Real deploys take the bootstrap token from a Worker secret
+  // and the deploy script refuses to render this dev flag.
+  "vars": {
+    "DUREE_WORKSPACE": "main",
+    "DUREE_ISSUE_PREFIX": "HUB",
+    "DUREE_STATUSES": "todo,in_progress,in_review,done,canceled",
+    "DUREE_BOOTSTRAP_TOKEN": "test-token-not-a-secret",
+    "DUREE_ALLOW_DEV_AUTH": "1"
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "WORKSPACE", "class_name": "Workspace" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Workspace"] }
+  ]
+}
