@@ -1,0 +1,10 @@
+# Example overlay with fake values. Differs from defaults only where noted.
+core: "0.1.0"
+workspace:
+  issue_prefix: EX
+retrieval:
+  ranker: lexical
+  rerank: false
+agents: ./agents.yaml
+workspaces: ./workspaces.yaml
+ranking: ./ranking.yaml

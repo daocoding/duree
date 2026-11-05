@@ -1,0 +1,41 @@
+{
+  "name": "duree",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Duree: memory as lived time for AI agents. One-read, one-write issue tracker, shared memory, and activity ledger over MCP.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "test": "vitest run --config vitest.config.ts && vitest run --config vitest.node.config.ts",
+    "test:workers": "vitest run --config vitest.config.ts",
+    "test:node": "vitest run --config vitest.node.config.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
+    "deploy": "tsx scripts/deploy.ts",
+    "bundle-extensions": "tsx scripts/bundle-extensions.ts",
+    "import:jsonl": "tsx scripts/import-jsonl.ts",
+    "scan": "tsx scripts/scan-secrets.ts"
+  },
+  "exports": {
+    "./extend": "./core/extend.ts",
+    "./records": "./core/records.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.4.0",
+    "agents": "0.33.0",
+    "yaml": "2.9.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.5.1",
+    "@cloudflare/workers-types": "5.20261104.1",
+    "@types/node": "^22.19.1",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "4.1.12",
+    "wrangler": "4.157.0"
+  }
+}

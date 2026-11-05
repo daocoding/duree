@@ -1,0 +1,22 @@
+# Public defaults. A fresh deploy works with no overrides.
+version: 1
+workspace:
+  default: main
+  issue_prefix: HUB
+  statuses: [todo, in_progress, in_review, done, canceled]
+auth:
+  bootstrap_admin: true
+  token_ttl_days: 0
+retrieval:
+  ranker: lexical
+  embed_model: "@cf/google/embeddinggemma-300m"
+  rerank: false
+  rrf_k: 60
+  limits: { issue: 8, memory: 12, deck: 10, event: 10 }
+deck:
+  module: deck-placeholder
+retention:
+  change_log_days: 0
+export:
+  r2_nightly: false
+extensions: []
