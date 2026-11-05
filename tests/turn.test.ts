@@ -24,7 +24,7 @@ describe("one read, one write", () => {
     );
     expect(described.status).toBe(200);
     const body = (await described.json()) as { schema_version: number; workspace: string; agent_id: string };
-    expect(body.schema_version).toBe(1);
+    expect(body.schema_version).toBe(2);
     expect(body.workspace).toBe(name);
     expect(body.agent_id).toBeTruthy();
   });
@@ -315,7 +315,7 @@ describe("one read, one write", () => {
     const anon = await request(name, "/v1/describe", { token: null });
     expect(anon.status).toBe(401);
     const described = await request(name, "/v1/describe");
-    expect(described.data.schema_version).toBe(1);
+    expect(described.data.schema_version).toBe(2);
     expect(described.data.agent_id).toBeTruthy();
     expect(described.data.version).toBe(got.data.version);
   });

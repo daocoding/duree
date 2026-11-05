@@ -23,6 +23,7 @@ const TOOLS = [
   "get",
   "changes",
   "describe",
+  "list_events",
   "issue_token",
   "revoke_token",
 ];
@@ -265,6 +266,7 @@ export function presentArtifact(artifact: Record<string, SqlStorageValue>) {
     ts: artifact.ts,
     kind: artifact.kind,
     note: artifact.note,
+    details: artifact.details ? parseJson(String(artifact.details), {}) : null,
     sync_id: artifact.sync_id,
     created_by: artifact.created_by,
   };
@@ -502,10 +504,34 @@ function recentEvents(db: Db, limit: number) {
     .map((event) => ({ ...presentEvent(event), snippet: snippet(String(event.summary)) }));
 }
 
+const EVENT_PAGE_MAX = 200;
+
+/** Opaque cursor for `ORDER BY ts DESC, sync_id DESC`. sync_id makes the order total. */
+export function encodeEventCursor(ts: string, syncId: number): string {
+  const bytes = new TextEncoder().encode(JSON.stringify({ ts, sync_id: syncId }));
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+}
+
+export function decodeEventCursor(cursor: string): { ts: string; sync_id: number } | null {
+  try {
+    const padded = cursor.replaceAll("-", "+").replaceAll("_", "/");
+    const pad = padded.length % 4 === 0 ? "" : "=".repeat(4 - (padded.length % 4));
+    const binary = atob(padded + pad);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    const parsed = JSON.parse(new TextDecoder().decode(bytes)) as { ts?: unknown; sync_id?: unknown };
+    if (typeof parsed.ts !== "string" || typeof parsed.sync_id !== "number" || !Number.isInteger(parsed.sync_id)) return null;
+    return { ts: parsed.ts, sync_id: parsed.sync_id };
+  } catch {
+    return null;
+  }
+}
+
 export function listEvents(
   db: Db,
   actor: Actor,
-  input: { since?: string; actor?: string; type?: string; project?: string; unsuperseded?: boolean; limit?: number },
+  input: { since?: string; actor?: string; type?: string; project?: string; unsuperseded?: boolean; limit?: number; cursor?: string },
 ) {
   if (denied(actor)) return { ok: false as const, error: "forbidden" as const, version: db.version() };
   const since = input.since ?? null;
@@ -513,7 +539,17 @@ export function listEvents(
   const type = input.type ?? null;
   const project = input.project ?? null;
   const unsuperseded = input.unsuperseded ? 1 : 0;
-  const limit = Math.max(1, Math.min(200, input.limit ?? 50));
+  const limit = Math.max(1, Math.min(EVENT_PAGE_MAX, input.limit ?? 50));
+  let cursorTs: string | null = null;
+  let cursorSync: number | null = null;
+  if (input.cursor) {
+    const decoded = decodeEventCursor(input.cursor);
+    if (!decoded) {
+      return { ok: false as const, error: "validation" as const, version: db.version(), problems: [{ message: "cursor is not valid" }] };
+    }
+    cursorTs = decoded.ts;
+    cursorSync = decoded.sync_id;
+  }
   const rows = db.exec<Record<string, SqlStorageValue>>(
     `SELECT * FROM events
      WHERE (? IS NULL OR ts >= ?)
@@ -521,11 +557,20 @@ export function listEvents(
        AND (? IS NULL OR type = ?)
        AND (? IS NULL OR project = ?)
        AND (? = 0 OR NOT EXISTS (SELECT 1 FROM events newer WHERE newer.supersedes_id = events.id))
+       AND (
+         ? IS NULL
+         OR ts < ?
+         OR (ts = ? AND sync_id < ?)
+       )
      ORDER BY ts DESC, sync_id DESC
      LIMIT ?`,
-    since, since, actorName, actorName, type, type, project, project, unsuperseded, limit,
+    since, since, actorName, actorName, type, type, project, project, unsuperseded,
+    cursorTs, cursorTs, cursorTs, cursorSync, limit + 1,
   );
-  return { ok: true as const, version: db.version(), events: rows.map(presentEvent) };
+  const page = rows.slice(0, limit).map(presentEvent);
+  const last = page[page.length - 1];
+  const nextCursor = rows.length > limit && last ? encodeEventCursor(String(last.ts), Number(last.sync_id)) : null;
+  return { ok: true as const, version: db.version(), events: page, next_cursor: nextCursor };
 }
 
 function recentArtifacts(db: Db, limit: number) {

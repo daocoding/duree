@@ -76,6 +76,7 @@ export function buildImportCommits(input: ImportRequest): BuiltImport {
       ts: value.ts,
       kind: value.kind,
       note: value.note,
+      details: value.details ? JSON.parse(value.details) : undefined,
     });
   });
   if (changes.length === 0) {

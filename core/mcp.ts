@@ -81,6 +81,23 @@ export function buildMcpServer(store: Store, actor: Actor): McpServer {
   );
 
   server.registerTool(
+    "list_events",
+    {
+      description: "Activity events in ts descending order, then sync id. Omit cursor for the first page. Pass next_cursor for the next page. The default page is 50 and a page is at most 200.",
+      inputSchema: z.object({
+        since: z.string().optional(),
+        actor: z.string().optional(),
+        type: z.string().optional(),
+        project: z.string().optional(),
+        unsuperseded: z.boolean().optional(),
+        limit: z.number().optional(),
+        cursor: z.string().optional(),
+      }),
+    },
+    async (args) => toolText(store.listEvents(actor, args)),
+  );
+
+  server.registerTool(
     "describe",
     {
       description: "Schema, enums, ops, caller identity, and the current version.",

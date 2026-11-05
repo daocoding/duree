@@ -36,7 +36,11 @@ export interface NormalizedArtifact {
   ts: string;
   kind: string | null;
   note: string | null;
+  details: string | null;
 }
+
+const ARTIFACT_FIELDS = new Set(["id", "path", "host", "producer", "project", "ts", "kind", "note", "details"]);
+const ARTIFACT_ENVELOPE = new Set(["op", "allow_unresolved_issue", "expect", "client_txn_id"]);
 
 function asRecord(input: unknown): Record<string, unknown> | null {
   if (!input || typeof input !== "object" || Array.isArray(input)) return null;
@@ -148,9 +152,32 @@ export function normalizeArtifact(input: unknown, options: NormalizeOptions = {}
   const host = str(record.host) ?? null;
   const project = str(record.project) ?? null;
   const kind = str(record.kind) ?? null;
-  const source_id = givenId ?? fnv1a(JSON.stringify({ path, host, producer, project, ts, kind, note }));
+  const details = artifactDetails(record);
+  if (!details.ok) return details;
+  const source_id = givenId ?? fnv1a(JSON.stringify({ path, host, producer, project, ts, kind, note, details: details.value }));
   return {
     ok: true,
-    value: { source_id, path, host, producer, project, ts, kind, note },
+    value: { source_id, path, host, producer, project, ts, kind, note, details: details.value },
   };
+}
+
+/** Known columns stay columns. Any other field is kept inside `details`. */
+function artifactDetails(record: Record<string, unknown>): { ok: true; value: string | null } | NormalizeFailure {
+  const extra: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(record)) {
+    if (ARTIFACT_FIELDS.has(key) || ARTIFACT_ENVELOPE.has(key)) continue;
+    extra[key] = value;
+  }
+  let merged: Record<string, unknown> | null = null;
+  if (record.details !== undefined && record.details !== null) {
+    if (!asRecord(record.details)) return { ok: false, reason: "invalid", error: "details must be an object" };
+    merged = { ...extra, ...record.details };
+  } else if (Object.keys(extra).length > 0) {
+    merged = extra;
+  }
+  if (!merged) return { ok: true, value: null };
+  const encoded = JSON.stringify(merged);
+  if (encoded.length > MAX_DETAILS) return { ok: false, reason: "invalid", error: "details is too large" };
+  if (containsSensitive(encoded)) return { ok: false, reason: "sensitive", error: SENSITIVE_MESSAGE };
+  return { ok: true, value: encoded };
 }

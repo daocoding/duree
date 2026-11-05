@@ -98,6 +98,7 @@ const SCHEMA = [
     ts TEXT NOT NULL,
     kind TEXT,
     note TEXT,
+    details TEXT,
     sync_id INTEGER NOT NULL,
     created_by TEXT NOT NULL
   )`,
@@ -173,10 +174,13 @@ export class Db {
 
   migrate(): void {
     for (const statement of SCHEMA) this.storage.sql.exec(statement);
+    this.ensureColumn("artifacts", "details", "TEXT");
     this.insertMeta("schema_version", String(SCHEMA_VERSION));
     this.insertMeta("last_sync_id", "0");
     this.insertMeta("index_version", "0");
     this.insertMeta("issue_seq", "0");
+    const current = Number(this.meta("schema_version") ?? "0");
+    if (current < SCHEMA_VERSION) this.setMeta("schema_version", String(SCHEMA_VERSION));
     if (!this.meta("issue_prefix")) {
       this.setMeta("issue_prefix", this.env.DUREE_ISSUE_PREFIX || "HUB");
     }
@@ -208,6 +212,13 @@ export class Db {
       key,
       value,
     );
+  }
+
+  /** Additive column for databases created before the column existed. */
+  private ensureColumn(table: string, column: string, definition: string): void {
+    const columns = this.exec<{ name: string }>(`PRAGMA table_info(${table})`);
+    if (columns.some((item) => item.name === column)) return;
+    this.storage.sql.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
   }
 
   private insertMeta(key: string, value: string): void {

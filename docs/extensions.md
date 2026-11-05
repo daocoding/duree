@@ -35,7 +35,7 @@ export default extension;
 
 `registerTools` runs for each MCP request, after the built-in tools. `handleHttp` runs only when the path is not a built-in `/v1` or `/admin` route. Return `null` to pass on.
 
-`ctx.store` is the workspace store. Writes go through `commit`, which is atomic, idempotent on `client_txn_id`, and rejects a stale `expect` with the current values. `importRecords` turns arrays of generic events and artifacts into those commits. `listEvents` reads the activity log (`since`, `actor`, `type`, `project`, `unsuperseded`). `getContext`, `getRecords`, `changes`, and `describe` are the same calls the built-in tools use.
+`ctx.store` is the workspace store. Writes go through `commit`, which is atomic, idempotent on `client_txn_id`, and rejects a stale `expect` with the current values. `importRecords` turns arrays of generic events and artifacts into those commits. `listEvents` reads the activity log (`since`, `actor`, `type`, `project`, `unsuperseded`, `limit`, `cursor`). Omit `cursor` for the first page. The default page is 50 and a page is at most 200. The reply includes `next_cursor` when another page exists. Order is `ts` descending, then sync id, so the cursor stays put when newer events arrive. `getContext`, `getRecords`, `changes`, and `describe` are the same calls the built-in tools use. `list_events` is that read on MCP and `POST /v1/events`.
 
 ## Wire it in
 
@@ -63,10 +63,10 @@ Each line is one event. `id` is the idempotency key. `type` is a short lowercase
 {"id":"e2","ts":"2026-06-01T01:00:00Z","actor":"ada","type":"correction","summary":"revised the note","supersedes":"e1","issue":"HUB-9"}
 ```
 
-Artifact lines use `path` and `producer`:
+Artifact lines use `path` and `producer`. A `details` object, and any field that is not a known column, is stored on the artifact and returned by `get` and `get_context`. `details` must be an object and its JSON must be at most 4000 characters. Rows written before `details` existed read back as `details: null`.
 
 ```json
-{"id":"f1","path":"notes/one.md","producer":"ada","ts":"2026-06-01T00:00:00Z","kind":"file","note":"scratch notes"}
+{"id":"f1","path":"notes/one.md","producer":"ada","ts":"2026-06-01T00:00:00Z","kind":"file","note":"scratch notes","checksum":"abc","details":{"lane":"desk"}}
 ```
 
 Send them through the built-in importer, which calls `commit` in batches of 50. The same `client_txn_id` replays. The same row `id` does not create a second event even if the transaction id changes.

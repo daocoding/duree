@@ -47,7 +47,7 @@ export class Store {
 
   listEvents(
     actor: Actor,
-    input: { since?: string; actor?: string; type?: string; project?: string; unsuperseded?: boolean; limit?: number },
+    input: { since?: string; actor?: string; type?: string; project?: string; unsuperseded?: boolean; limit?: number; cursor?: string },
   ) {
     return listEvents(this.db, actor, input);
   }

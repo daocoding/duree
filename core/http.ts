@@ -38,7 +38,7 @@ export async function handleHttp(store: Store, actor: Actor, request: Request): 
   if (request.method === "GET" && path === "/v1/describe") return json(store.describe(actor));
 
   if (request.method === "POST") {
-    const known = path === "/v1/commit" || path === "/v1/get_context" || path === "/v1/get" || path === "/v1/changes" || path === "/v1/import" || path === "/admin/tokens" || path === "/admin/tokens/revoke";
+    const known = path === "/v1/commit" || path === "/v1/get_context" || path === "/v1/get" || path === "/v1/changes" || path === "/v1/events" || path === "/v1/import" || path === "/admin/tokens" || path === "/admin/tokens/revoke";
     if (known) {
       const parsedBody = await readBody(request);
       if (!parsedBody.ok) return parsedBody.response;
@@ -52,6 +52,17 @@ export async function handleHttp(store: Store, actor: Actor, request: Request): 
       if (path === "/v1/get") return json(store.getRecords(actor, record));
       if (path === "/v1/changes") {
         return json(store.changes(actor, record as { since?: number; limit?: number; entities?: string[] }));
+      }
+      if (path === "/v1/events") {
+        return json(store.listEvents(actor, {
+          since: typeof record.since === "string" ? record.since : undefined,
+          actor: typeof record.actor === "string" ? record.actor : undefined,
+          type: typeof record.type === "string" ? record.type : undefined,
+          project: typeof record.project === "string" ? record.project : undefined,
+          unsuperseded: record.unsuperseded === true,
+          limit: typeof record.limit === "number" ? record.limit : undefined,
+          cursor: typeof record.cursor === "string" ? record.cursor : undefined,
+        }));
       }
       if (path === "/v1/import") {
         const result = store.importRecords(actor, {

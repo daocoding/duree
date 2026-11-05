@@ -702,19 +702,24 @@ function prepareArtifact(db: Db, actor: Actor, raw: Op, index: number) {
       apply(syncId: number, commitId: string) {
         const id = db.nextId("art");
         db.exec(
-          `INSERT INTO artifacts(id, source_id, path, host, producer, project, ts, kind, note, sync_id, created_by)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO artifacts(id, source_id, path, host, producer, project, ts, kind, note, details, sync_id, created_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           id, artifact.source_id, artifact.path, artifact.host, artifact.producer, artifact.project,
-          artifact.ts, artifact.kind, artifact.note, syncId, actor.id,
+          artifact.ts, artifact.kind, artifact.note, artifact.details, syncId, actor.id,
         );
         db.indexDoc({
           entity: "artifact", entity_id: id, title: artifact.path,
-          text: `${artifact.path}\n${artifact.note ?? ""} ${artifact.kind ?? ""} ${artifact.project ?? ""}`,
+          text: `${artifact.path}\n${artifact.note ?? ""} ${artifact.kind ?? ""} ${artifact.project ?? ""}\n${artifact.details ?? ""}`,
           sync_id: syncId,
         });
         db.writeChange({
           sync_id: syncId, commit_id: commitId, entity: "artifact", entity_id: id, field: null, op,
-          value: JSON.stringify({ path: artifact.path, kind: artifact.kind, ts: artifact.ts }),
+          value: JSON.stringify({
+            path: artifact.path,
+            kind: artifact.kind,
+            ts: artifact.ts,
+            ...(artifact.details ? { details: JSON.parse(artifact.details) } : {}),
+          }),
           agent_id: actor.id, at: artifact.ts,
         });
         return { id };
