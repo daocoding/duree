@@ -114,6 +114,69 @@ describe("one read, one write", () => {
     expect(after.data.records[0].status).toBe("in_progress");
   });
 
+  it("rejects a stale assignee expect and returns the current assignee", async () => {
+    const name = workspaceName();
+    const created = await request(name, "/v1/commit", {
+      body: { client_txn_id: "create-assignee", changes: [{ op: "issue.create", title: "assignee race" }] },
+    });
+    const id = created.data.applied[0].id as string;
+    const got = await request(name, "/v1/get", { body: { ids: [id] } });
+    const expected = got.data.records[0].field_versions.assignee as number;
+    const assigned = await request(name, "/v1/commit", {
+      body: {
+        client_txn_id: "assign-ada",
+        changes: [{ op: "issue.set", id, field: "assignee", value: "ada", expect: expected }],
+      },
+    });
+    expect(assigned.data.ok).toBe(true);
+    const stale = await request(name, "/v1/commit", {
+      body: {
+        client_txn_id: "assign-bao",
+        changes: [{ op: "issue.set", id, field: "assignee", value: "bao", expect: expected }],
+      },
+    });
+    expect(stale.status).toBe(409);
+    expect(stale.data.ok).toBe(false);
+    expect(stale.data.error).toBe("conflict");
+    expect(stale.data.conflicts[0].field).toBe("assignee");
+    expect(stale.data.conflicts[0].actual).toBeGreaterThan(stale.data.conflicts[0].expected);
+    expect(stale.data.conflicts[0].current).toBe("ada");
+    const after = await request(name, "/v1/get", { body: { ids: [id] } });
+    expect(after.data.records[0].assignee).toBe("ada");
+  });
+
+  it("rejects a stale memory supersede expect and returns the current fact", async () => {
+    const name = workspaceName();
+    const added = await request(name, "/v1/commit", {
+      body: { client_txn_id: "fact-v1", changes: [{ op: "memory.add", content: "checks every deploy" }] },
+    });
+    const id = added.data.applied[0].id as string;
+    const version = added.data.last_sync_id as number;
+    const revised = await request(name, "/v1/commit", {
+      body: {
+        client_txn_id: "fact-v2",
+        changes: [{ op: "memory.supersede", id, expect: version, content: "checks every staging deploy" }],
+      },
+    });
+    expect(revised.data.ok).toBe(true);
+    const currentId = revised.data.created[id] as string;
+    const stale = await request(name, "/v1/commit", {
+      body: {
+        client_txn_id: "fact-v3",
+        changes: [{ op: "memory.supersede", id: currentId, expect: version, content: "checks every production deploy" }],
+      },
+    });
+    expect(stale.status).toBe(409);
+    expect(stale.data.ok).toBe(false);
+    expect(stale.data.error).toBe("conflict");
+    expect(stale.data.conflicts[0].field).toBe("content");
+    expect(stale.data.conflicts[0].actual).toBeGreaterThan(stale.data.conflicts[0].expected);
+    expect(stale.data.conflicts[0].current).toBe("checks every staging deploy");
+    const after = await request(name, "/v1/get", { body: { ids: [currentId] } });
+    expect(after.data.records[0].content).toBe("checks every staging deploy");
+    expect(after.data.records[0].status).toBe("current");
+  });
+
   it("writes twenty changes with no gaps and stamps the token agent", async () => {
     const name = workspaceName();
     const issued = await request(name, "/admin/tokens", {
